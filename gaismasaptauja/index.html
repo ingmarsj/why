@@ -37,27 +37,14 @@ input[type=text]:focus-visible,button:focus-visible,.opt input:focus-visible+spa
 .opt input:checked+span{border-color:var(--glow);box-shadow:0 0 0 4px rgba(255,233,168,.12),0 0 28px rgba(255,233,168,.18)}
 .d{font:400 30px/1 "DM Serif Display",Georgia,serif;white-space:nowrap}
 .wd{color:var(--mut);font-size:14px}
-.cnt{display:flex;justify-content:space-between;gap:8px;font-size:14px;margin-top:12px;color:var(--mut)}
-.bar{display:block;height:6px;border-radius:3px;background:#0b2426;margin-top:6px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--glow);border-radius:3px;transition:width .3s}
-.top{color:var(--acc);font-weight:800}
 .act{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:20px}
 button{font:inherit;font-weight:800;border:0;border-radius:12px;min-height:48px;padding:0 22px;cursor:pointer}
 .go{background:var(--glow);color:#1a1405}
 .go:disabled{opacity:.5;cursor:default}
-.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:600}
 .msg{font-size:15px;color:var(--mut)}
 .msg.ok{color:var(--glow)}.msg.err{color:var(--acc)}
-h2{font:400 28px/1.1 "DM Serif Display",Georgia,serif;margin:56px 0 6px}
-.res{display:grid;gap:12px;margin-top:16px}
-.grp{background:var(--bg2);border-radius:16px;padding:14px 16px}
-.grp h3{margin:0 0 8px;font-size:16px;display:flex;justify-content:space-between;gap:8px}
-.grp h3 b{color:var(--glow)}
-.names{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0}
-.names li{background:var(--card);border-radius:999px;padding:4px 12px;font-size:15px}
-.empty{color:var(--mut);font-size:15px;margin:0}
-.note{color:var(--mut);font-size:13px;margin-top:28px}
-@media(max-width:600px){.opts{grid-template-columns:minmax(0,1fr)}.opt>span{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:baseline}.cnt,.bar{grid-column:1/-1}}
+.msg a{color:var(--glow)}
+@media(max-width:600px){.opts{grid-template-columns:minmax(0,1fr)}.opt>span{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:baseline}}
 </style>
 </head>
 <body>
@@ -71,10 +58,6 @@ h2{font:400 28px/1.1 "DM Serif Display",Georgia,serif;margin:56px 0 6px}
     <fieldset class="opts" id="opts"><legend>Kurš datums Tev der?</legend></fieldset>
     <div class="act"><button class="go" id="send" type="submit">Nosūtīt atbildi</button><span class="msg" id="msg" role="status" aria-live="polite"></span></div>
   </form>
-  <h2>Kurš kuru datumu izvēlējies</h2>
-  <p class="lead" style="margin:0">Kopā atbildējuši: <b id="total">–</b></p>
-  <div class="res" id="res"><p class="empty">Ielādēju atbildes…</p></div>
-  <p class="note">Atbildes redz visi, kam ir saite uz šo aptauju.</p>
 </div>
 <script src="../themes/config.js"></script>
 <script>
@@ -87,14 +70,12 @@ h2{font:400 28px/1.1 "DM Serif Display",Georgia,serif;margin:56px 0 6px}
     {id:'2026-12-27', d:'27. decembris', wd:'svētdiena'}
   ];
   const $ = id => document.getElementById(id);
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const norm = s => s.trim().replace(/\s+/g, ' ').toLocaleLowerCase('lv');
-  const votes = n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'balss' : 'balsis');
   const store = {
     get(k){ try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v){ try { localStorage.setItem(k, v); } catch { /* optional convenience */ } }
   };
-  let responses = [], loaded = false, busy = false, requestNumber = 0;
+  let busy = false;
 
   async function rpc(fn, body){
     const cfg = window.THEME_POLL_CONFIG || {};
@@ -110,7 +91,7 @@ h2{font:400 28px/1.1 "DM Serif Display",Georgia,serif;margin:56px 0 6px}
     return r.json();
   }
 
-  function setMsg(t, k){ const m = $('msg'); m.textContent = t; m.className = 'msg ' + (k || ''); }
+  function setMsg(t, k, html){ const m = $('msg'); if (html) m.innerHTML = t; else m.textContent = t; m.className = 'msg ' + (k || ''); }
 
   function lights(){
     const n = 15; let p = '', b = '';
@@ -123,63 +104,16 @@ h2{font:400 28px/1.1 "DM Serif Display",Georgia,serif;margin:56px 0 6px}
     $('lights').innerHTML = `<svg class="lights" viewBox="0 0 720 90" preserveAspectRatio="none" aria-hidden="true"><path d="${p}" fill="none" stroke="#3d6b6a" stroke-width="1.5"/>${b}</svg>`;
   }
 
-  // The date cards are built once so typing and the chosen radio survive a refresh.
   function buildOptions(){
     $('opts').insertAdjacentHTML('beforeend', DATES.map(d =>
-      `<label class="opt"><input type="radio" name="date" value="${d.id}"><span>
-        <span class="d">${d.d}</span> <span class="wd">${d.wd}</span>
-        <span class="cnt"><span data-n="${d.id}">–</span><span class="top" data-top="${d.id}" hidden>Populārākais</span></span>
-        <span class="bar"><i data-bar="${d.id}" style="width:0"></i></span></span></label>`).join(''));
+      `<label class="opt"><input type="radio" name="date" value="${d.id}"><span><span class="d">${d.d}</span> <span class="wd">${d.wd}</span></span></label>`).join(''));
   }
 
-  function paint(){
-    const by = {}; DATES.forEach(d => by[d.id] = []);
-    responses.forEach(r => { if (by[r.date_id]) by[r.date_id].push(r); });
-    Object.values(by).forEach(a => a.sort((x, y) => x.name.localeCompare(y.name, 'lv')));
-    const total = responses.length;
-    const max = Math.max(0, ...DATES.map(d => by[d.id].length));
-    DATES.forEach(d => {
-      const n = by[d.id].length;
-      document.querySelector(`[data-n="${d.id}"]`).textContent = votes(n);
-      document.querySelector(`[data-top="${d.id}"]`).hidden = !(n && n === max);
-      document.querySelector(`[data-bar="${d.id}"]`).style.width = (total ? Math.round(n / total * 100) : 0) + '%';
-    });
-    $('total').textContent = total;
-    $('res').innerHTML = DATES.map(d => {
-      const list = by[d.id];
-      return `<div class="grp"><h3><span>${d.d}</span><b>${list.length}</b></h3>${list.length
-        ? `<ul class="names">${list.map(r => `<li>${esc(r.name)}</li>`).join('')}</ul>`
-        : '<p class="empty">Vēl neviens nav izvēlējies šo datumu.</p>'}</div>`;
-    }).join('');
-    syncButton();
-  }
-
-  // If the typed name already answered, offer to change that answer.
-  function mine(){ const n = norm($('name').value); return n ? responses.find(r => norm(r.name) === n) : null; }
+  // This browser's earlier answer (if any), only to label the button.
+  function answered(){ const n = store.get('gd-name'); return !!n && norm($('name').value) === norm(n) && !!store.get('gd-date'); }
   function syncButton(){
-    $('send').textContent = mine() ? 'Mainīt atbildi' : 'Nosūtīt atbildi';
+    $('send').textContent = answered() ? 'Mainīt atbildi' : 'Nosūtīt atbildi';
     $('send').disabled = busy;
-  }
-
-  async function load(){
-    const number = ++requestNumber;
-    try {
-      const data = await rpc('get_gaisma_results');
-      if (number !== requestNumber) return;
-      if (!Array.isArray(data)) throw new Error('Unexpected response');
-      responses = data.filter(r => r && typeof r.name === 'string' && typeof r.date_id === 'string');
-      const first = !loaded; loaded = true;
-      paint();
-      if (first){
-        const m = mine();
-        if (m && !document.querySelector('input[name=date]:checked')){
-          const r = document.querySelector(`input[name=date][value="${m.date_id}"]`); if (r) r.checked = true;
-        }
-      }
-    } catch {
-      if (number !== requestNumber) return;
-      if (!loaded) $('res').innerHTML = '<p class="empty">Neizdevās ielādēt atbildes. Lūdzu, pārlādē lapu.</p>';
-    }
   }
 
   $('f').addEventListener('submit', async e => {
@@ -193,24 +127,22 @@ h2{font:400 28px/1.1 "DM Serif Display",Georgia,serif;margin:56px 0 6px}
     busy = true; syncButton(); setMsg('Saglabāju…');
     try {
       await rpc('submit_gaisma_response', {p_name: name, p_date: d.id});
-      store.set('gd-name', name);
+      store.set('gd-name', name); store.set('gd-date', d.id);
       $('name').value = name;
-      setMsg('Paldies, ' + name + '! Tava izvēle: ' + d.d + '.', 'ok');
-      busy = false;
-      await load();
+      setMsg('Paldies, ' + name + '! Tava izvēle: ' + d.d + '. <a href="stats/">Skatīt rezultātus</a>', 'ok', true);
     } catch {
       setMsg('Neizdevās saglabāt. Lūdzu, mēģini vēlreiz.', 'err');
     } finally { busy = false; syncButton(); }
   });
 
   $('name').addEventListener('input', syncButton);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && !busy) load(); });
 
   lights();
   buildOptions();
   $('name').value = store.get('gd-name') || '';
+  const prev = store.get('gd-date');
+  if (prev){ const r = document.querySelector('input[name=date][value="' + prev + '"]'); if (r) r.checked = true; }
   syncButton();
-  load();
 })();
 </script>
 </body>

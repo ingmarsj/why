@@ -7,7 +7,8 @@ Static site served by GitHub Pages at **https://why.inbokss.com** (see `CNAME`).
 | `/`, `/en/`, `/ru/`, `/lt/`, `/et/` | Landing page "Why Inbox.lv" (Latvian is the default, served at `/`) |
 | `/themes/`, `/en/themes/`, … | Vote for the new Inbox Mail colour themes |
 | `/themes/stats/` | Live aggregate vote statistics (English only) |
-| `/gaismasaptauja/` | Gaismas dārza date poll (Latvian, hand-written, `noindex`, not part of `build.py`) |
+| `/gaismasaptauja/` | Gaismas dārza date poll: name + one date only (Latvian, hand-written, `noindex`, not part of `build.py`) |
+| `/gaismasaptauja/stats/` | Live results: votes per date and who picked which |
 
 ## Editing
 
@@ -27,7 +28,7 @@ Do not edit the generated `index.html` files by hand.
 | `assets/site.css` | Landing page styles |
 | `themes/themes.css`, `themes/app.js` | Theme picker and demo mailbox |
 | `themes/poll.js`, `themes/config.js` | Vote submission to Supabase (publishable key only) |
-| `gaismasaptauja/index.html`, `gaismasaptauja.sql` | Gaismas dārza poll page and its Supabase table and functions (run the SQL once) |
+| `gaismasaptauja/index.html`, `gaismasaptauja/stats/index.html`, `gaismasaptauja.sql` | Gaismas dārza poll page and its Supabase table and functions (run the SQL once) |
 | `*.sql` | Supabase schema, migrations and checks |
 
 ## SEO and AI discovery
